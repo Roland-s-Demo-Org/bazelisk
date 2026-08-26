@@ -1,8 +1,6 @@
 module github.com/bazelbuild/bazelisk
 
-go 1.23.0
-
-toolchain go1.24.2
+go 1.25.0
 
 require (
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d
@@ -12,4 +10,4 @@ require (
 	golang.org/x/term v0.34.0
 )
 
-require golang.org/x/sys v0.35.0 // indirect
+require golang.org/x/sys v0.44.0 // indirect
