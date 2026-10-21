@@ -668,6 +668,10 @@ func prependDirToPathList(cmd *exec.Cmd, dir string) {
 
 func makeBazelCmd(bazel string, args []string, out io.Writer, config config.Config) *exec.Cmd {
 	execPath := maybeDelegateToWrapper(bazel, config)
+	validPath := regexp.MustCompile(`^[a-zA-Z0-9_\-\./\\:]+$`)
+	if !validPath.MatchString(execPath) {
+		log.Fatalf("invalid input")
+	}
 
 	cmd := exec.Command(execPath, args...)
 	cmd.Env = append(os.Environ(), skipWrapperEnv+"=true")
