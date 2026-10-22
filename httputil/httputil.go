@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	netrc "github.com/bgentry/go-netrc/netrc"
@@ -261,10 +262,27 @@ type ContentMerger func([][]byte) ([]byte, error)
 // Parameter ´description´ is only used to provide better error messages.
 // Parameter `auth` is a value of "Authorization" HTTP header.
 func MaybeDownload(bazeliskHome, url, filename, description, auth string, merger ContentMerger) ([]byte, error) {
+	for _, seg := range strings.Split(filepath.ToSlash(filename), "/") {
+		if seg == ".." {
+			return nil, fmt.Errorf("invalid file path")
+		}
+	}
+	
+	root, err := os.OpenRoot(bazeliskHome)
+	if err != nil {
+		return nil, fmt.Errorf("invalid file path")
+	}
+	defer root.Close()
+	
 	cachePath := filepath.Join(bazeliskHome, filename)
-	if cacheStat, err := os.Stat(cachePath); err == nil {
+	if cacheStat, err := root.Stat(filename); err == nil {
 		if time.Since(cacheStat.ModTime()).Hours() < 1 {
-			res, err := os.ReadFile(cachePath)
+			file, err := root.Open(filename)
+			if err != nil {
+				return nil, fmt.Errorf("could not read %s: %v", cachePath, err)
+			}
+			defer file.Close()
+			res, err := io.ReadAll(file)
 			if err != nil {
 				return nil, fmt.Errorf("could not read %s: %v", cachePath, err)
 			}
@@ -289,7 +307,12 @@ func MaybeDownload(bazeliskHome, url, filename, description, auth string, merger
 		return nil, fmt.Errorf("failed to merge %d chunks from %s: %v", len(contents), url, err)
 	}
 
-	err = os.WriteFile(cachePath, merged, 0666)
+	file, err := root.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return nil, fmt.Errorf("could not create %s: %v", cachePath, err)
+	}
+	defer file.Close()
+	_, err = file.Write(merged)
 	if err != nil {
 		return nil, fmt.Errorf("could not create %s: %v", cachePath, err)
 	}
