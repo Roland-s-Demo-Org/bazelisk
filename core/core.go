@@ -529,6 +529,12 @@ func downloadBazelToCAS(version string, bazeliskHome string, repos *Repositories
 		return "", "", fmt.Errorf("failed to download bazel: %w", err)
 	}
 
+	// Validate that the returned path is within the expected directory
+	relPath, err := filepath.Rel(temporaryDownloadDir, tmpDestPath)
+	if err != nil || strings.HasPrefix(relPath, ".."+string(filepath.Separator)) || relPath == ".." {
+		return "", "", fmt.Errorf("invalid file path")
+	}
+
 	f, err := os.Open(tmpDestPath)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to open downloaded bazel to digest it: %w", err)
